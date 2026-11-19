@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Records Manager</title>
+<style>
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{font-family:Arial,sans-serif;margin:0;padding:8px;font-size:16px;overflow-x:hidden}
+h3{margin:4px 0 8px}
+.ind{display:grid;grid-template-columns:repeat(2,1fr);gap:4px}
+.ind span{border:1px solid #999;padding:8px;word-break:break-word}
+.ctl{display:grid;grid-template-columns:1fr;gap:6px;margin:8px 0}
+.ctl input,.ctl select,.ctl button{width:100%;min-height:44px;padding:8px;font-size:16px}
+table{border-collapse:collapse;width:100%}
+td,th{border:1px solid #ccc;padding:6px;text-align:left;word-break:break-word}
+td input,td select{width:100%;min-height:40px;font-size:16px;padding:6px}
+tr.missed{background:#fdd}
+tr.noname{background:#ffd}
+@media(min-width:601px){
+ .ind{display:flex;flex-wrap:wrap}
+ .ctl{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+}
+@media(min-width:900px){
+ body{max-width:1100px;margin:0 auto}
+}
+@media(max-width:600px){
+ thead{display:none}
+ table,tbody,tr,td{display:block;width:100%}
+ tr{margin-bottom:10px;border:1px solid #999}
+ td{border:0;border-bottom:1px solid #ddd;display:flex;gap:8px;align-items:center}
+ td:before{content:attr(data-label);font-weight:bold;min-width:70px}
+ td input,td select{flex:1}
+}
+</style>
+</head>
+<body>
+<h3>Records Manager <small id="saved"></small></h3>
+
+<div class="ind" id="ind"></div>
+
+<div class="ctl">
+ <input id="q" placeholder="Search name or no" oninput="render()">
+ <select id="fc" onchange="render()">
+  <option value="">All categories</option>
+  <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="U">Uncategorized</option>
+ </select>
+ <select id="fs" onchange="render()"></select>
+ <select id="fst" onchange="render()">
+  <option value="">All status</option>
+  <option value="available">Available</option>
+  <option value="missed">Missed</option>
+  <option value="noname">No name</option>
+ </select>
+</div>
+
+<div class="ctl">
+ <input id="ns" placeholder="New street name">
+ <button onclick="addStreet()">Add street</button>
+ <button onclick="exportCSV()">Export CSV</button>
+ <button onclick="backup()">Backup</button>
+ <input type="file" id="rf" accept=".json" onchange="restore(this)">
+</div>
+
+<p id="count"></p>
+<table>
+<thead><tr><th>Rec No</th><th>Name</th><th>Category</th><th>Street</th><th>Status</th></tr></thead>
+<tbody id="rows"></tbody>
+</table>
+
+<script>
+var KEY="records_app_v1";
+var SEED=[{"no": 553, "name": "Kavala Susi", "status": "available", "cat": "U", "street": ""}, {"no": 554, "name": "Satish Peda Kapu", "status": "available", "cat": "U", "street": ""}, {"no": 555, "name": "Kavala Meri Ratna Kumari", "status": "available", "cat": "U", "street": ""}, {"no": 556, "name": "Kavala Srinivas", "status": "available", "cat": "U", "street": ""}, {"no": 557, "name": "Kavala Venkatesh", "status": "available", "cat": "U", "street": ""}, {"no": 558, "name": "Kavala Rambabu(Pandu)", "status": "available", "cat": "U", "street": ""}, {"no": 559, "name": "Kavala Rani", "status": "available", "cat": "U", "street": ""}, {"no": 560, "name": "Kavala Lakshmi", "status": "available", "cat": "U", "street": ""}, {"no": 561, "name": "Kavala Satya Narayana", "status": "available", "cat": "U", "street": ""}, {"no": 562, "name": "Kavala Sri Durga", "status": "available", "cat": "U", "street": ""}, {"no": 563, "name": "Nagarjuna Gonthina", "status": "available", "cat": "U", "street": ""}, {"no": 564, "name": "Patletu Uppada", "status": "available", "cat": "U", "street": ""}, {"no": 565, "name": "Rajamma Uppada", "status": "available", "cat": "U", "street": ""}, {"no": 566, "name": "Kavala Srinivas Roa", "status": "available", "cat": "U", "street": ""}, {"no": 567, "name": "Siva Narayana Nagireddy", "status": "available", "cat": "U", "street": ""}, {"no": 568, "name": "Kavala Varalakhsmi", "status": "available", "cat": "U", "street": ""}, {"no": 569, "name": "Ganesh Uppada", "status": "available", "cat": "U", "street": ""}, {"no": 570, "name": "Venkata lakhsmi Uppada", "status": "available", "cat": "U", "street": ""}, {"no": 571, "name": "Apparoa Tammana", "status": "available", "cat": "U", "street": ""}, {"no": 572, "name": "Kavala Venakata subrmanyam", "status": "available", "cat": "U", "street": ""}, {"no": 573, "name": "Kavala Dharani Sailaja", "status": "available", "cat": "U", "street": ""}, {"no": 574, "name": "", "status": "missed", "cat": "U", "street": ""}, {"no": 575, "name": "Kavala Govindha raju", "status": "available", "cat": "U", "street": ""}, {"no": 576, "name": "Kavala Nagamani", "status": "available", "cat": "U", "street": ""}, {"no": 577, "name": "Kavala Venkatesh", "status": "available", "cat": "U", "street": ""}, {"no": 578, "name": "Kavala GopiNadh", "status": "available", "cat": "U", "street": ""}, {"no": 579, "name": "Kavala Veera Kumari", "status": "available", "cat": "U", "street": ""}, {"no": 580, "name": "Babi Kavala", "status": "available", "cat": "U", "street": ""}, {"no": 581, "name": "Venkat Surya Prakash Tummala", "status": "available", "cat": "U", "street": ""}, {"no": 582, "name": "Manikyam Tummala", "status": "available", "cat": "U", "street": ""}, {"no": 583, "name": "Venkatesh Kavala", "status": "available", "cat": "U", "street": ""}, {"no": 584, "name": "Swathi kavala", "status": "available", "cat": "U", "street": ""}, {"no": 585, "name": "Gayatri Tirri", "status": "available", "cat": "U", "street": ""}, {"no": 586, "name": "Simhachalam Tirri", "status": "available", "cat": "U", "street": ""}, {"no": 587, "name": "Venkatlakhsmi Gollavilli", "status": "available", "cat": "U", "street": ""}, {"no": 588, "name": "", "status": "missed", "cat": "U", "street": ""}, {"no": 589, "name": "Triveni Nakkaraju", "status": "available", "cat": "U", "street": ""}, {"no": 590, "name": "Lakhmi Prasanna Bathula", "status": "available", "cat": "U", "street": ""}, {"no": 591, "name": "Siva Ramanjaneyulu Gollavilli", "status": "available", "cat": "U", "street": ""}, {"no": 592, "name": "Srinivasa roa Goolavilli", "status": "available", "cat": "U", "street": ""}, {"no": 593, "name": "Devi Gollavilli", "status": "available", "cat": "U", "street": ""}, {"no": 594, "name": "Ginath Sheik", "status": "available", "cat": "U", "street": ""}, {"no": 595, "name": "Sathyavathi Boddu", "status": "available", "cat": "U", "street": ""}, {"no": 596, "name": "babijan Sheik", "status": "available", "cat": "U", "street": ""}, {"no": 597, "name": "Basheer Babu Sheik", "status": "available", "cat": "U", "street": ""}, {"no": 598, "name": "Basheer Babu Sheik", "status": "available", "cat": "U", "street": ""}, {"no": 599, "name": "Ramalakhsmi Gollavilli", "status": "available", "cat": "U", "street": ""}, {"no": 600, "name": "phuspalatha Vemana", "status": "available", "cat": "U", "street": ""}, {"no": 601, "name": "Venkat Varalakshmi Gollavilli", "status": "available", "cat": "U", "street": ""}, {"no": 602, "name": "Pramila Rani Manukonda", "status": "available", "cat": "U", "street": ""}, {"no": 603, "name": "lakhsmi Vommula", "status": "available", "cat": "U", "street": ""}, {"no": 604, "name": "Ramana Jetti", "status": "available", "cat": "U", "street": ""}, {"no": 605, "name": "Sathi Babu Andhoboyina", "status": "available", "cat": "U", "street": ""}, {"no": 606, "name": "Naga Sridevi Andhoboyina", "status": "available", "cat": "U", "street": ""}, {"no": 607, "name": "Satyanarayana thumpala", "status": "available", "cat": "U", "street": ""}, {"no": 608, "name": "Durga Bhavani Thumpala", "status": "available", "cat": "U", "street": ""}, {"no": 609, "name": "Kesava Roa Micharla", "status": "available", "cat": "U", "street": ""}, {"no": 610, "name": "varalakhmi Micharla", "status": "available", "cat": "U", "street": ""}, {"no": 611, "name": "Yesubabu Koppisetti", "status": "available", "cat": "U", "street": ""}, {"no": 612, "name": "Mangalakshmi Koppisetti", "status": "available", "cat": "U", "street": ""}, {"no": 613, "name": "Ramana Vuggina", "status": "available", "cat": "U", "street": ""}, {"no": 614, "name": "Nagamani Vuggina", "status": "available", "cat": "U", "street": ""}, {"no": 615, "name": "Pavan Shankar Vuggina", "status": "available", "cat": "U", "street": ""}, {"no": 616, "name": "HemaSrikanth Busala", "status": "available", "cat": "U", "street": ""}, {"no": 617, "name": "Phusparaju Busala", "status": "available", "cat": "U", "street": ""}, {"no": 618, "name": "Durga Devi kankipati", "status": "available", "cat": "U", "street": ""}, {"no": 619, "name": "", "status": "missed", "cat": "U", "street": ""}, {"no": 620, "name": "Durgasai Varaprasad Kankipati", "status": "available", "cat": "U", "street": ""}, {"no": 621, "name": "Ratnaji Sundarapalli", "status": "available", "cat": "U", "street": ""}, {"no": 622, "name": "Raghva Tammana", "status": "available", "cat": "U", "street": ""}, {"no": 623, "name": "Kondapalli Krishana", "status": "available", "cat": "U", "street": ""}, {"no": 624, "name": "Tammana Lakshmi", "status": "available", "cat": "U", "street": ""}, {"no": 625, "name": "Kondapalli Varalakshmi", "status": "available", "cat": "U", "street": ""}, {"no": 626, "name": "Durga Prasad Batta", "status": "available", "cat": "U", "street": ""}, {"no": 627, "name": "Chandravathi Gonthina", "status": "available", "cat": "U", "street": ""}, {"no": 628, "name": "Nagamani Gonthina", "status": "available", "cat": "U", "street": ""}, {"no": 629, "name": "Rambabu Gonthina", "status": "available", "cat": "U", "street": ""}, {"no": 630, "name": "Durga Kavala", "status": "available", "cat": "U", "street": ""}, {"no": 631, "name": "Sri Ramulu Batta", "status": "available", "cat": "U", "street": ""}, {"no": 632, "name": "Bhulakshmi Batta", "status": "available", "cat": "U", "street": ""}, {"no": 633, "name": "GangaRaju Tamarla", "status": "available", "cat": "U", "street": ""}, {"no": 634, "name": "Aruna Tamarla", "status": "available", "cat": "U", "street": ""}, {"no": 635, "name": "kavala Sai Venkata Surya Narayana", "status": "available", "cat": "U", "street": ""}, {"no": 636, "name": "Varalaksmi Amalapurapu", "status": "available", "cat": "U", "street": ""}, {"no": 637, "name": "Nanaji Vommula", "status": "available", "cat": "U", "street": ""}, {"no": 638, "name": "Pentayya Tirri", "status": "available", "cat": "U", "street": ""}, {"no": 639, "name": "Varalakhsmi Tirri", "status": "available", "cat": "U", "street": ""}, {"no": 640, "name": "Durga roa vammula", "status": "available", "cat": "U", "street": ""}, {"no": 641, "name": "Durga Devi Mudedla", "status": "available", "cat": "U", "street": ""}, {"no": 642, "name": "Somababu Gonthina", "status": "available", "cat": "U", "street": ""}, {"no": 643, "name": "Bhavani GOnthina", "status": "available", "cat": "U", "street": ""}, {"no": 644, "name": "Prasanth Kumar Dasari", "status": "available", "cat": "U", "street": ""}, {"no": 645, "name": "Sannasamma Dasari", "status": "available", "cat": "U", "street": ""}, {"no": 646, "name": "Venkatroa Dasari", "status": "available", "cat": "U", "street": ""}, {"no": 647, "name": "Appalaraju Dasari", "status": "available", "cat": "U", "street": ""}, {"no": 648, "name": "Posamma balireddy", "status": "available", "cat": "U", "street": ""}, {"no": 649, "name": "Ramu dasari", "status": "available", "cat": "U", "street": ""}, {"no": 650, "name": "Laskhman Dasri", "status": "available", "cat": "U", "street": ""}, {"no": 651, "name": "Pullaroa Sidda", "status": "available", "cat": "U", "street": ""}, {"no": 652, "name": "Srinu magada", "status": "available", "cat": "U", "street": ""}, {"no": 653, "name": "Satyavathi Magada", "status": "available", "cat": "U", "street": ""}, {"no": 654, "name": "Ramalakshmi Sidda", "status": "available", "cat": "U", "street": ""}, {"no": 655, "name": "Magada Ramesh", "status": "available", "cat": "U", "street": ""}, {"no": 656, "name": "Ramangali Siva Ganesh Gollavilli", "status": "available", "cat": "U", "street": ""}, {"no": 657, "name": "Ratnam Gonthina", "status": "available", "cat": "U", "street": ""}, {"no": 658, "name": "Srinu Gonthina", "status": "available", "cat": "U", "street": ""}, {"no": 659, "name": "Vedhanandha Swami Gollavili", "status": "available", "cat": "U", "street": ""}, {"no": 660, "name": "Sai Kumari Gollavilli", "status": "available", "cat": "U", "street": ""}, {"no": 661, "name": "Vishnu Murthy Gollavilli", "status": "available", "cat": "U", "street": ""}, {"no": 662, "name": "Gollavilli Kumari", "status": "available", "cat": "U", "street": ""}, {"no": 663, "name": "", "status": "missed", "cat": "U", "street": ""}, {"no": 664, "name": "Satya Narayana Gilla", "status": "available", "cat": "U", "street": ""}, {"no": 665, "name": "Veera Lakshmi Gilla", "status": "available", "cat": "U", "street": ""}, {"no": 666, "name": "Taslil Sheik", "status": "available", "cat": "U", "street": ""}, {"no": 667, "name": "veerababu Gonthina", "status": "available", "cat": "U", "street": ""}, {"no": 668, "name": "Lakshmi Sampatha", "status": "available", "cat": "U", "street": ""}, {"no": 669, "name": "Prabhavathi Pila", "status": "available", "cat": "U", "street": ""}, {"no": 670, "name": "Siva Chandra sekhar Rachuri", "status": "available", "cat": "U", "street": ""}, {"no": 671, "name": "Lalitha Devi Gonthina", "status": "available", "cat": "U", "street": ""}, {"no": 672, "name": "Adi Naraya Kankipati", "status": "available", "cat": "U", "street": ""}, {"no": 673, "name": "", "status": "missed", "cat": "U", "street": ""}, {"no": 674, "name": "Laksmi Narayana Kankipati", "status": "available", "cat": "U", "street": ""}, {"no": 675, "name": "Veerababu Bobbari", "status": "available", "cat": "U", "street": ""}, {"no": 676, "name": "", "status": "missed", "cat": "U", "street": ""}, {"no": 677, "name": "Padma Sampatha", "status": "available", "cat": "U", "street": ""}, {"no": 678, "name": "Ratnaji Smapatha", "status": "available", "cat": "U", "street": ""}, {"no": 679, "name": "Kedarieshwarroa sampatha", "status": "available", "cat": "U", "street": ""}, {"no": 680, "name": "Veera Venkata satya vathi Sampatha", "status": "available", "cat": "U", "street": ""}, {"no": 681, "name": "Chandra roa pyli", "status": "available", "cat": "U", "street": ""}, {"no": 682, "name": "Achiyamma pyli", "status": "available", "cat": "U", "street": ""}, {"no": 683, "name": "Arjun pyli", "status": "available", "cat": "U", "street": ""}, {"no": 684, "name": "Dhana Lakshmi Garapati", "status": "available", "cat": "U", "street": ""}, {"no": 685, "name": "Durga roa gaggala", "status": "available", "cat": "U", "street": ""}, {"no": 686, "name": "Srinivasu Gaggala", "status": "available", "cat": "U", "street": ""}, {"no": 687, "name": "posi Ratnam Gaggala", "status": "available", "cat": "U", "street": ""}, {"no": 688, "name": "Laksmi Parvathi Gaggala", "status": "available", "cat": "U", "street": ""}, {"no": 689, "name": "Dhana Rajesh Gaggala", "status": "available", "cat": "U", "street": ""}, {"no": 690, "name": "Durga Prasad Jetti", "status": "available", "cat": "U", "street": ""}, {"no": 691, "name": "Achiyamma Jetti", "status": "available", "cat": "U", "street": ""}, {"no": 692, "name": "", "status": "missed", "cat": "U", "street": ""}, {"no": 693, "name": "Durga Roa siddireddy", "status": "available", "cat": "U", "street": ""}, {"no": 694, "name": "Parvathi Siddireddi", "status": "available", "cat": "U", "street": ""}, {"no": 695, "name": "Nageswara roa Siddireddi", "status": "available", "cat": "U", "street": ""}, {"no": 696, "name": "Satyavathi Kunadha", "status": "available", "cat": "U", "street": ""}, {"no": 697, "name": "posamma siddireddi", "status": "available", "cat": "U", "street": ""}, {"no": 698, "name": "Nandini siddireddi", "status": "available", "cat": "U", "street": ""}, {"no": 699, "name": "Posiyya chakarala", "status": "available", "cat": "U", "street": ""}, {"no": 700, "name": "Veera laksmi chakrala", "status": "available", "cat": "U", "street": ""}, {"no": 701, "name": "Suresh chakrala", "status": "available", "cat": "U", "street": ""}, {"no": 702, "name": "Lakshmi Balleni", "status": "available", "cat": "U", "street": ""}, {"no": 703, "name": "Satyavathi Balleni", "status": "available", "cat": "U", "street": ""}, {"no": 704, "name": "raja Ramesh Balleni", "status": "available", "cat": "U", "street": ""}, {"no": 705, "name": "Srinivas Balleni", "status": "available", "cat": "U", "street": ""}, {"no": 706, "name": "Kanaka Mahalakshmi Balleni", "status": "available", "cat": "U", "street": ""}, {"no": 707, "name": "Gouri Parvathi Balleni", "status": "available", "cat": "U", "street": ""}, {"no": 708, "name": "Durgaprasad Balleni", "status": "available", "cat": "U", "street": ""}, {"no": 709, "name": "Mangatayaru Tiranam", "status": "available", "cat": "U", "street": ""}, {"no": 710, "name": "satyaNaraya Tiranam", "status": "available", "cat": "U", "street": ""}, {"no": 711, "name": "Apparoa Vuggina", "status": "available", "cat": "U", "street": ""}, {"no": 712, "name": "Srinivas Vuggina", "status": "available", "cat": "U", "street": ""}, {"no": 713, "name": "Vishnu Kumari Vuggina", "status": "available", "cat": "U", "street": ""}, {"no": 714, "name": "Siva prasad narni", "status": "available", "cat": "U", "street": ""}, {"no": 715, "name": "Chandravathi narni", "status": "available", "cat": "U", "street": ""}, {"no": 716, "name": "Veera Rajya lakshmi Narni", "status": "available", "cat": "U", "street": ""}, {"no": 717, "name": "Sai Manikanta Narni", "status": "available", "cat": "U", "street": ""}, {"no": 718, "name": "Venkayya Gonthina", "status": "available", "cat": "U", "street": ""}, {"no": 719, "name": "Venkateshulu Gonthina", "status": "available", "cat": "U", "street": ""}, {"no": 720, "name": "peddabbyi Padala", "status": "available", "cat": "U", "street": ""}, {"no": 721, "name": "Lakhsmi Padala", "status": "available", "cat": "U", "street": ""}, {"no": 722, "name": "Siva Surya Pavan Kumar Gandu", "status": "available", "cat": "U", "street": ""}, {"no": 723, "name": "Durga Manikanta Gandu", "status": "available", "cat": "U", "street": ""}, {"no": 724, "name": "Vinod Mandapaka", "status": "available", "cat": "U", "street": ""}, {"no": 725, "name": "Voleti Satya Narayana", "status": "available", "cat": "U", "street": ""}, {"no": 726, "name": "Voleti Surya Kumari", "status": "available", "cat": "U", "street": ""}, {"no": 727, "name": "", "status": "missed", "cat": "U", "street": ""}, {"no": 728, "name": "Nikhil Siva Voleti", "status": "available", "cat": "U", "street": ""}, {"no": 729, "name": "Ramaroa Mandapaka", "status": "available", "cat": "U", "street": ""}, {"no": 730, "name": "RajaRamesh Mandapaka", "status": "available", "cat": "U", "street": ""}, {"no": 731, "name": "Gopi Ratnam Mandapaka", "status": "available", "cat": "U", "street": ""}, {"no": 732, "name": "Surya Kanakalaskhmi Mandapaka", "status": "available", "cat": "U", "street": ""}, {"no": 733, "name": "Bahvani Mandapaka", "status": "available", "cat": "U", "street": ""}, {"no": 734, "name": "Rahul mandpaka", "status": "available", "cat": "U", "street": ""}, {"no": 735, "name": "Pepakayala Varalakhmi", "status": "available", "cat": "U", "street": ""}, {"no": 736, "name": "Veer Venkata satya Narayana Varalakshmi", "status": "available", "cat": "U", "street": ""}, {"no": 737, "name": "", "status": "noname", "cat": "U", "street": ""}];
+var CAT={A:"A",B:"B",C:"C",U:"Uncategorized"};
+var db=load();
+
+function load(){
+ try{var s=localStorage.getItem(KEY);if(s)return JSON.parse(s);}catch(e){}
+ var d={records:SEED,streets:[]};
+ localStorage.setItem(KEY,JSON.stringify(d));
+ return d;
+}
+function save(){
+ localStorage.setItem(KEY,JSON.stringify(db));
+ var t=new Date().toLocaleTimeString();
+ document.getElementById("saved").textContent="(saved "+t+")";
+}
+function find(no){return db.records.filter(function(r){return r.no==no})[0];}
+function setCat(no,v){find(no).cat=v;save();render();}
+function setStreet(no,v){find(no).street=v;save();render();}
+function setName(no,v){var r=find(no);r.name=v.trim();r.status=r.name?"available":"noname";save();render();}
+function addStreet(){
+ var i=document.getElementById("ns"),v=i.value.trim();
+ if(!v)return;
+ if(db.streets.indexOf(v)>=0){alert("Street already exists");return;}
+ db.streets.push(v);i.value="";save();render();
+}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");}
+
+function indicators(){
+ var R=db.records,c={A:0,B:0,C:0,U:0},m=0,ns=0,nn=0;
+ R.forEach(function(r){
+  if(r.status=="missed"){m++;return;}
+  c[r.cat]++;
+  if(!r.street)ns++;
+  if(r.status=="noname")nn++;
+ });
+ document.getElementById("ind").innerHTML=
+  "<span>Total: "+R.length+"</span><span>Missed: "+m+"</span>"+
+  "<span>Category A: "+c.A+"</span><span>Category B: "+c.B+"</span><span>Category C: "+c.C+"</span>"+
+  "<span>Uncategorized: "+c.U+"</span><span>No street: "+ns+"</span><span>No name: "+nn+"</span>"+
+  db.streets.map(function(s){
+   var n=R.filter(function(r){return r.street==s}).length;
+   return "<span>"+esc(s)+": "+n+"</span>";
+  }).join("");
+}
+function streetFilter(){
+ var s=document.getElementById("fs"),cur=s.value;
+ s.innerHTML='<option value="">All streets</option><option value="__none">No street</option>'+
+  db.streets.map(function(x){return '<option>'+esc(x)+'</option>'}).join("");
+ s.value=cur;
+}
+function render(){
+ indicators();streetFilter();
+ var q=document.getElementById("q").value.toLowerCase(),
+ fc=document.getElementById("fc").value,
+ fs=document.getElementById("fs").value,
+ fst=document.getElementById("fst").value;
+ var list=db.records.filter(function(r){
+  if(q&&(r.name.toLowerCase().indexOf(q)<0&&String(r.no).indexOf(q)<0))return false;
+  if(fc&&r.cat!=fc)return false;
+  if(fs=="__none"&&r.street)return false;
+  if(fs&&fs!="__none"&&r.street!=fs)return false;
+  if(fst&&r.status!=fst)return false;
+  return true;
+ });
+ document.getElementById("count").textContent="Showing "+list.length+" of "+db.records.length;
+ document.getElementById("rows").innerHTML=list.map(function(r){
+  var nm=r.status=="missed"?"-":(r.name?esc(r.name):'<input placeholder="Enter name" onchange="setName('+r.no+',this.value)">');
+  var cat="-",st="-";
+  if(r.status!="missed"){
+   cat='<select onchange="setCat('+r.no+',this.value)">'+
+    Object.keys(CAT).map(function(k){return '<option value="'+k+'"'+(r.cat==k?" selected":"")+'>'+CAT[k]+'</option>'}).join("")+'</select>';
+   st='<select onchange="setStreet('+r.no+',this.value)"><option value="">-- none --</option>'+
+    db.streets.map(function(s){return '<option'+(r.street==s?" selected":"")+'>'+esc(s)+'</option>'}).join("")+'</select>';
+  }
+  var label=r.status=="missed"?"MISSED":(r.status=="noname"?"NO NAME":"Available");
+  return '<tr class="'+r.status+'"><td data-label="Rec No">'+r.no+'</td><td data-label="Name">'+nm+'</td><td data-label="Category">'+cat+'</td><td data-label="Street">'+st+'</td><td data-label="Status">'+label+'</td></tr>';
+ }).join("");
+}
+function download(name,text,type){
+ var a=document.createElement("a");
+ a.href=URL.createObjectURL(new Blob([text],{type:type}));
+ a.download=name;a.click();
+}
+function exportCSV(){
+ var out=["Record No,Name,Category,Street,Status"];
+ db.records.forEach(function(r){
+  out.push([r.no,'"'+r.name.replace(/"/g,'""')+'"',CAT[r.cat],'"'+r.street.replace(/"/g,'""')+'"',r.status].join(","));
+ });
+ download("records.csv",out.join("\n"),"text/csv");
+}
+function backup(){download("records_backup.json",JSON.stringify(db),"application/json");}
+function restore(inp){
+ var f=inp.files[0];if(!f)return;
+ var fr=new FileReader();
+ fr.onload=function(){
+  try{
+   var d=JSON.parse(fr.result);
+   if(!d.records||!d.streets)throw 1;
+   if(!confirm("Replace current data with this backup?"))return;
+   db=d;save();render();
+  }catch(e){alert("Invalid backup file");}
+ };
+ fr.readAsText(f);inp.value="";
+}
+render();
+</script>
+</body>
+</html>
